@@ -1,6 +1,6 @@
 /*
  *  WrapSix
- *  Copyright (C) 2008-2013  xHire <xhire@wrapsix.org>
+ *  Copyright (C) 2008-2017  xHire <xhire@wrapsix.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -168,14 +168,17 @@ int cfg_parse(const char *config_file, unsigned short *cmtu,
 				*cmtu = C_DEFAULT_MTU;
 			}
 		} else if (!strcmp(tmp_opt, "interface")) {
-			strncpy(oto->interface, tmp_val, sizeof(oto->interface));
+			strncpy(oto->interface, tmp_val,
+				sizeof(oto->interface));
 		} else if (!strcmp(tmp_opt, "prefix")) {
 			strncpy(oto->prefix, tmp_val, sizeof(oto->prefix));
 		} else if (!strcmp(tmp_opt, "ipv4_address")) {
 			if (val_len < sizeof(oto->ipv4_address)) {
-				strncpy(oto->ipv4_address, tmp_val, sizeof(oto->ipv4_address));
+				strncpy(oto->ipv4_address, tmp_val,
+					sizeof(oto->ipv4_address));
 			} else {
-				SYNTAX_ERROR(config_file, ln, opt_len + wht_len, init);
+				SYNTAX_ERROR(config_file, ln, opt_len + wht_len,
+					     init);
 			}
 		} else {
 			log_error("Unknown configuration option");
@@ -318,7 +321,9 @@ void cfg_guess_interface(char *cinterface)
 
 		/* skip loopback */
 		if (strcmp(ifa->ifa_name, "lo")) {
-			strncpy(cinterface, ifa->ifa_name, sizeof(cinterface));
+			strncpy(cinterface, ifa->ifa_name,
+				sizeof(((struct s_cfg_opts *) NULL)->interface)
+			);
 			break;
 		}
 	}
