@@ -1,6 +1,6 @@
 /*
  *  WrapSix
- *  Copyright (C) 2008-2013  Michal Zima <xhire@mujmalysvet.cz>
+ *  Copyright (C) 2008-2017  xHire <xhire@wrapsix.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -84,9 +84,9 @@ int icmp_ndp(struct s_ethernet *ethq, struct s_ipv6 *ipq,
 	     struct s_icmp_ndp_ns *ndp_ns);
 
 int icmp4_error(struct s_ipv4_addr ip_dest, unsigned char type,
-		unsigned char code, unsigned char *data, unsigned short length);
+		unsigned char code, char *data, unsigned short length);
 int icmp6_error(struct s_mac_addr mac_dest, struct s_ipv6_addr ip_dest,
-		unsigned char type, unsigned char code, unsigned char *data,
+		unsigned char type, unsigned char code, char *data,
 		unsigned short length);
 
 #endif /* ICMP_H */

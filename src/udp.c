@@ -1,6 +1,6 @@
 /*
  *  WrapSix
- *  Copyright (C) 2008-2013  Michal Zima <xhire@mujmalysvet.cz>
+ *  Copyright (C) 2008-2017  xHire <xhire@wrapsix.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 
 #include <net/ethernet.h>	/* ETHERTYPE_* */
 #include <netinet/in.h>		/* htons */
-#include <stdlib.h>		/* malloc */
 #include <string.h>		/* memcpy */
 
 #include "checksum.h"
@@ -48,13 +47,13 @@
 int udp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 	     unsigned short payload_size)
 {
-	struct s_udp  *udp;
-	struct s_nat  *connection;
-	unsigned short orig_checksum;
-	unsigned char *packet;
+	struct s_udp	*udp;
+	struct s_nat	*connection;
+	unsigned short	 orig_checksum;
+	char		 packet[PACKET_BUFFER];
 
 	struct s_ethernet *eth6;
-	struct s_ipv6 *ip6;
+	struct s_ipv6     *ip6;
 
 	/* parse UDP header */
 	udp = (struct s_udp *) payload;
@@ -65,7 +64,7 @@ int udp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 		udp->checksum = 0;
 		udp->checksum = checksum_ipv4(ip4->ip_src, ip4->ip_dest,
 					      payload_size, IPPROTO_UDP,
-					      (unsigned char *) udp);
+					      payload);
 
 		if (udp->checksum != orig_checksum) {
 			/* packet is corrupted and shouldn't be processed */
@@ -85,13 +84,7 @@ int udp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 
 	linkedlist_move2end(timeout_udp, connection->llnode);
 
-	/* allocate memory for translated packet */
-	if ((packet = (unsigned char *) malloc(sizeof(struct s_ethernet) +
-					       sizeof(struct s_ipv6) +
-					       payload_size)) == NULL) {
-		log_error("Lack of free memory");
-		return 1;
-	}
+	/* translated packet */
 	eth6 = (struct s_ethernet *) packet;
 	ip6 = (struct s_ipv6 *) (packet + sizeof(struct s_ethernet));
 
@@ -124,7 +117,7 @@ int udp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 		/* if original checksum was 0x0000, we need to compute it */
 		udp->checksum = checksum_ipv6(ip6->ip_src, ip6->ip_dest,
 					      payload_size, IPPROTO_UDP,
-					      (unsigned char *) udp);
+					      (char *) udp);
 	}
 
 	/* copy the payload data (with new checksum) */
@@ -134,9 +127,6 @@ int udp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 	/* send translated packet */
 	transmit_raw(packet, sizeof(struct s_ethernet) + sizeof(struct s_ipv6) +
 		     payload_size);
-
-	/* clean-up */
-	free(packet);
 
 	return 0;
 }
@@ -154,12 +144,12 @@ int udp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
  */
 int udp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 {
-	struct s_udp  *udp;
-	struct s_nat  *connection;
-	unsigned short orig_checksum;
-	struct s_ipv4 *ip4;
-	unsigned char *packet;
-	unsigned int   packet_size;
+	struct s_udp	*udp;
+	struct s_nat	*connection;
+	unsigned short	 orig_checksum;
+	struct s_ipv4	*ip4;
+	char		 packet[PACKET_BUFFER];
+	unsigned int	 packet_size;
 
 	/* parse UDP header */
 	udp = (struct s_udp *) payload;
@@ -168,8 +158,7 @@ int udp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 	orig_checksum = udp->checksum;
 	udp->checksum = 0;
 	udp->checksum = checksum_ipv6(ip6->ip_src, ip6->ip_dest,
-				      htons(ip6->len), IPPROTO_UDP,
-				      (unsigned char *) payload);
+				      htons(ip6->len), IPPROTO_UDP, payload);
 
 	if (udp->checksum != orig_checksum) {
 		/* packet is corrupted and shouldn't be processed */
@@ -193,13 +182,10 @@ int udp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 		linkedlist_move2end(timeout_udp, connection->llnode);
 	}
 
-	/* allocate memory for translated packet */
-	packet_size = sizeof(struct s_ipv4) + htons(ip6->len);
-	if ((packet = (unsigned char *) malloc(packet_size)) == NULL) {
-		log_error("Lack of free memory");
-		return 1;
-	}
+
+	/* translated packet */
 	ip4 = (struct s_ipv4 *) packet;
+	packet_size = sizeof(struct s_ipv4) + htons(ip6->len);
 
 	/* build IPv4 packet */
 	ip4->ver_hdrlen	  = 0x45;		/* ver 4, header length 20 B */
@@ -232,9 +218,6 @@ int udp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 
 	/* send translated packet */
 	transmit_ipv4(&ip4->ip_dest, packet, packet_size);
-
-	/* clean-up */
-	free(packet);
 
 	return 0;
 }

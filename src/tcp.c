@@ -1,6 +1,6 @@
 /*
  *  WrapSix
- *  Copyright (C) 2008-2013  xHire <xhire@wrapsix.org>
+ *  Copyright (C) 2008-2017  xHire <xhire@wrapsix.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -48,12 +48,12 @@
 int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 	     unsigned short payload_size)
 {
-	struct s_tcp  *tcp;
-	struct s_nat  *connection;
-	unsigned short tmp_short;
-	unsigned char *packet;
+	struct s_tcp	*tcp;
+	struct s_nat	*connection;
+	unsigned short	 tmp_short;
+	char		 packet[PACKET_BUFFER];
 
-	unsigned char		*saved_packet;
+	char			*saved_packet;
 	struct s_nat_fragments	*frag_conn;
 	linkedlist_node_t	*llnode;
 
@@ -79,7 +79,7 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 			tcp->checksum = 0;
 			tcp->checksum = checksum_ipv4(ip4->ip_src, ip4->ip_dest,
 						      payload_size, IPPROTO_TCP,
-						      (unsigned char *) tcp);
+						      (char *) tcp);
 
 			if (tcp->checksum != tmp_short) {
 				/* packet is corrupted and shouldn't be
@@ -184,11 +184,10 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 						  (char *) llnode->prev->data +
 						  sizeof(unsigned short) +
 						  sizeof(struct s_ethernet)),
-						 (char *) (
-						  (char *) llnode->prev->data +
+						 (char *) llnode->prev->data +
 						  sizeof(unsigned short) +
 						  sizeof(struct s_ethernet) +
-						  sizeof(struct s_ipv4)),
+						  sizeof(struct s_ipv4),
 						 tmp_short);
 					free(llnode->prev->data);
 					linkedlist_delete(frag_conn->queue,
@@ -197,15 +196,7 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 			}
 		}
 
-		/* allocate enough memory for translated packet */
-		if ((packet = (unsigned char *) malloc(
-		    payload_size > mtu - sizeof(struct s_ipv6) ?
-		    mtu + sizeof(struct s_ethernet) :
-		    sizeof(struct s_ethernet) + sizeof(struct s_ipv6) +
-		    payload_size)) == NULL) {
-			log_error("Lack of free memory");
-			return 1;
-		}
+		/* translated packet */
 		eth6 = (struct s_ethernet *) packet;
 		ip6 = (struct s_ipv6 *) (packet + sizeof(struct s_ethernet));
 
@@ -244,8 +235,8 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 			ip6->next_header = IPPROTO_FRAGMENT;
 
 			/* create IPv6 fragment header */
-			frag = (struct s_ipv6_fragment *) ((unsigned char *) ip6
-			       + sizeof(struct s_ipv6));
+			frag = (struct s_ipv6_fragment *) ((char *) ip6 +
+				sizeof(struct s_ipv6));
 			frag->next_header = IPPROTO_TCP;
 			frag->zeros	  = 0x0;
 			frag->offset_flag = htons(IPV6_FLAG_MORE_FRAGMENTS);
@@ -253,8 +244,7 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 						      (unsigned int) rand();
 
 			/* copy the payload data */
-			memcpy((unsigned char *) frag +
-			       sizeof(struct s_ipv6_fragment),
+			memcpy((char *) frag + sizeof(struct s_ipv6_fragment),
 			       payload, FRAGMENT_LEN);
 
 			/* send translated packet */
@@ -270,8 +260,7 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 			frag->offset_flag = htons((FRAGMENT_LEN / 8) << 3);
 
 			/* copy the payload data */
-			memcpy((unsigned char *) frag +
-			       sizeof(struct s_ipv6_fragment),
+			memcpy((char *) frag + sizeof(struct s_ipv6_fragment),
 			       payload + FRAGMENT_LEN,
 			       payload_size - FRAGMENT_LEN);
 
@@ -285,7 +274,7 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 			ip6->next_header = IPPROTO_TCP;
 
 			/* copy the payload data */
-			memcpy((unsigned char *) ip6 + sizeof(struct s_ipv6),
+			memcpy((char *) ip6 + sizeof(struct s_ipv6),
 			       payload, payload_size);
 
 			/* send translated packet */
@@ -303,7 +292,7 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 			log_debug("Incoming connection wasn't found in "
 				  "fragments table -- saving it");
 
-			if ((saved_packet = (unsigned char *) malloc(
+			if ((saved_packet = (char *) malloc(
 			    sizeof(unsigned short) + sizeof(struct s_ethernet) +
 			    sizeof(struct s_ipv4) + payload_size)) == NULL) {
 				log_error("Lack of free memory");
@@ -322,36 +311,25 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 			/* save the packet and put it into the queue */
 			memcpy(saved_packet, &payload_size,
 			       sizeof(unsigned short));
-			memcpy((unsigned char *) (saved_packet +
-			       sizeof(unsigned short)), eth4,
-			       sizeof(struct s_ethernet));
-			memcpy((unsigned char *) (saved_packet +
-			       sizeof(unsigned short) +
-			       sizeof(struct s_ethernet)), ip4,
-			       sizeof(struct s_ipv4));
-			memcpy((unsigned char *) (saved_packet +
-			       sizeof(unsigned short) +
+			memcpy(saved_packet + sizeof(unsigned short),
+			       (char *) eth4, sizeof(struct s_ethernet));
+			memcpy(saved_packet + sizeof(unsigned short) +
+			       sizeof(struct s_ethernet),
+			       (char *) ip4, sizeof(struct s_ipv4));
+			memcpy(saved_packet + sizeof(unsigned short) +
 			       sizeof(struct s_ethernet) +
-			       sizeof(struct s_ipv4)), payload, payload_size);
+			       sizeof(struct s_ipv4), payload, payload_size);
 
 			linkedlist_append(frag_conn->queue, saved_packet);
 
 			return 0;
 		}
 
-		/* allocate enough memory for translated packet */
-		if ((packet = (unsigned char *) malloc(
-		    payload_size > mtu - sizeof(struct s_ipv6) -
-		    sizeof(struct s_ipv6_fragment) ?
-		    mtu + sizeof(struct s_ethernet) :
-		    sizeof(struct s_ethernet) + sizeof(struct s_ipv6) +
-		    sizeof(struct s_ipv6_fragment) + payload_size)) == NULL) {
-			log_error("Lack of free memory");
-			return 1;
-		}
+		/* translated packet */
 		eth6 = (struct s_ethernet *) packet;
-		ip6 = (struct s_ipv6 *) (packet + sizeof(struct s_ethernet));
-		frag = (struct s_ipv6_fragment *) ((unsigned char *) ip6 +
+		ip6  = (struct s_ipv6 *) (packet + sizeof(struct s_ethernet));
+		frag = (struct s_ipv6_fragment *) (packet +
+						   sizeof(struct s_ethernet) +
 						   sizeof(struct s_ipv6));
 
 		/* build ethernet header */
@@ -386,8 +364,7 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 						  IPV6_FLAG_MORE_FRAGMENTS);
 
 			/* copy the payload data */
-			memcpy((unsigned char *) frag +
-			       sizeof(struct s_ipv6_fragment),
+			memcpy((char *) frag + sizeof(struct s_ipv6_fragment),
 			       payload, FRAGMENT_LEN);
 
 			/* send translated packet */
@@ -407,8 +384,7 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 			}
 
 			/* copy the payload data */
-			memcpy((unsigned char *) frag +
-			       sizeof(struct s_ipv6_fragment),
+			memcpy((char *) frag + sizeof(struct s_ipv6_fragment),
 			       payload + FRAGMENT_LEN,
 			       payload_size - FRAGMENT_LEN);
 
@@ -432,7 +408,7 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 			}
 
 			/* copy the payload data */
-			memcpy((unsigned char *) ip6 + sizeof(struct s_ipv6) +
+			memcpy((char *) ip6 + sizeof(struct s_ipv6) +
 			       sizeof(struct s_ipv6_fragment),
 			       payload, payload_size);
 
@@ -443,9 +419,6 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 				     payload_size);
 		}
 	}
-
-	/* clean-up */
-	free(packet);
 
 	return 0;
 }
@@ -463,11 +436,11 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
  */
 int tcp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 {
-	struct s_tcp  *tcp;
-	struct s_nat  *connection;
-	unsigned short orig_checksum;
-	struct s_ipv4 *ip4;
-	unsigned char *packet;
+	struct s_tcp	*tcp;
+	struct s_nat	*connection;
+	unsigned short	 orig_checksum;
+	struct s_ipv4	*ip4;
+	char		 packet[PACKET_BUFFER];
 
 	/* parse TCP header */
 	tcp = (struct s_tcp *) payload;
@@ -477,7 +450,7 @@ int tcp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 	tcp->checksum = 0;
 	tcp->checksum = checksum_ipv6(ip6->ip_src, ip6->ip_dest,
 				      htons(ip6->len), IPPROTO_TCP,
-				      (unsigned char *) payload);
+				      (char *) payload);
 
 	if (tcp->checksum != orig_checksum) {
 		/* packet is corrupted and shouldn't be processed */
@@ -560,12 +533,7 @@ int tcp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 			}
 	}
 
-	/* allocate memory for translated packet */
-	if ((packet = (unsigned char *) malloc(sizeof(struct s_ipv4) +
-	    htons(ip6->len))) == NULL) {
-		log_error("Lack of free memory");
-		return 1;
-	}
+	/* translated packet */
 	ip4 = (struct s_ipv4 *) packet;
 
 	/* build IPv4 packet */
@@ -599,9 +567,6 @@ int tcp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 
 	/* send translated packet */
 	transmit_ipv4(&ip4->ip_dest, packet, htons(ip4->len));
-
-	/* clean-up */
-	free(packet);
 
 	return 0;
 }

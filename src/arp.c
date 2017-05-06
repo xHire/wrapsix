@@ -1,6 +1,6 @@
 /*
  *  WrapSix
- *  Copyright (C) 2008-2012  Michal Zima <xhire@mujmalysvet.cz>
+ *  Copyright (C) 2008-2017  xHire <xhire@wrapsix.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,13 +18,14 @@
 
 #include <net/ethernet.h>	/* ETHERTYPE_* */
 #include <netinet/in.h>		/* htons */
-#include <stdlib.h>		/* malloc */
-#include <string.h>		/* memcmp, memset */
+#include <string.h>		/* memcmp */
 
 #include "arp.h"
 #include "log.h"
 #include "transmitter.h"
 #include "wrapper.h"
+
+#define ARP_PACKET_SIZE sizeof(struct s_ethernet) + sizeof(struct s_arp)
 
 /**
  * Process ARP packets and reply to them.
@@ -39,7 +40,7 @@ int arp(struct s_ethernet *ethq, char *payload)
 {
 	struct s_arp *arpq, *arpr;	/* request and reply */
 	struct s_ethernet *ethr;
-	unsigned char *packet;
+	char packet[ARP_PACKET_SIZE];
 
 	arpq = (struct s_arp *) payload;
 
@@ -54,16 +55,6 @@ int arp(struct s_ethernet *ethq, char *payload)
 		log_debug("This is unfamiliar ARP packet");
 		return 1;
 	}
-
-	/* compute the packet size */
-	#define ARP_PACKET_SIZE sizeof(struct s_ethernet) + sizeof(struct s_arp)
-
-	/* allocate enough memory */
-	if ((packet = (unsigned char *) malloc(ARP_PACKET_SIZE)) == NULL) {
-		log_error("Lack of free memory");
-		return 1;
-	}
-	memset(packet, 0x0, ARP_PACKET_SIZE);
 
 	/* define ethernet header and ARP offsets */
 	ethr = (struct s_ethernet *) packet;

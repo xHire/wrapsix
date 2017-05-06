@@ -1,6 +1,6 @@
 /*
  *  WrapSix
- *  Copyright (C) 2008-2013  Michal Zima <xhire@mujmalysvet.cz>
+ *  Copyright (C) 2008-2017  xHire <xhire@wrapsix.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,13 +17,13 @@
  */
 
 #include <netinet/in.h>		/* htonl */
-#include <stdlib.h>		/* malloc */
 #include <string.h>		/* memcpy */
 
 #include "checksum.h"
 #include "ipv4.h"
 #include "ipv6.h"
 #include "log.h"
+#include "wrapper.h"
 
 /**
  * General checksum computation function.
@@ -49,9 +49,9 @@ unsigned short checksum(const void *data, int length)
 	}
 
 	if (length) {
-		unsigned char temp[2];
+		char temp[2];
 
-		temp[0] = *(unsigned char *) buf;
+		temp[0] = *(char *) buf;
 		temp[1] = 0;
 
 		sum += *(unsigned short *) temp;
@@ -121,16 +121,10 @@ unsigned short checksum_update(unsigned short old_sum,
 unsigned short checksum_ipv4(struct s_ipv4_addr ip_src,
 			     struct s_ipv4_addr ip_dest,
 			     unsigned short length, unsigned char proto,
-			     unsigned char *payload)
+			     char *payload)
 {
-	unsigned char		*buffer;
+	char			 buffer[PACKET_BUFFER];
 	struct s_ipv4_pseudo	*header;
-	unsigned short		 sum;
-
-	if ((buffer = malloc(sizeof(struct s_ipv4_pseudo) + length)) == NULL) {
-		log_error("Lack of free memory");
-		return 0;
-	}
 
 	header = (struct s_ipv4_pseudo *) buffer;
 
@@ -142,11 +136,7 @@ unsigned short checksum_ipv4(struct s_ipv4_addr ip_src,
 
 	memcpy(buffer + sizeof(struct s_ipv4_pseudo), payload, (int) length);
 
-	sum = checksum(buffer, sizeof(struct s_ipv4_pseudo) + (int) length);
-
-	free(buffer);
-
-	return sum;
+	return checksum(buffer, sizeof(struct s_ipv4_pseudo) + (int) length);
 }
 
 /**
@@ -163,16 +153,10 @@ unsigned short checksum_ipv4(struct s_ipv4_addr ip_src,
 unsigned short checksum_ipv6(struct s_ipv6_addr ip_src,
 			     struct s_ipv6_addr ip_dest,
 			     unsigned short length, unsigned char proto,
-			     unsigned char *payload)
+			     char *payload)
 {
-	unsigned char		*buffer;
+	char			 buffer[PACKET_BUFFER];
 	struct s_ipv6_pseudo	*header;
-	unsigned short		 sum;
-
-	if ((buffer = malloc(sizeof(struct s_ipv6_pseudo) + length)) == NULL) {
-		log_error("Lack of free memory");
-		return 0;
-	}
 
 	header = (struct s_ipv6_pseudo *) buffer;
 
@@ -184,11 +168,7 @@ unsigned short checksum_ipv6(struct s_ipv6_addr ip_src,
 
 	memcpy(buffer + sizeof(struct s_ipv6_pseudo), payload, (int) length);
 
-	sum = checksum(buffer, sizeof(struct s_ipv6_pseudo) + (int) length);
-
-	free(buffer);
-
-	return sum;
+	return checksum(buffer, sizeof(struct s_ipv6_pseudo) + (int) length);
 }
 
 /**

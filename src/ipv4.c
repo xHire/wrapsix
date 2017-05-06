@@ -1,6 +1,6 @@
 /*
  *  WrapSix
- *  Copyright (C) 2008-2013  Michal Zima <xhire@mujmalysvet.cz>
+ *  Copyright (C) 2008-2017  xHire <xhire@wrapsix.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -63,7 +63,7 @@ int ipv4(struct s_ethernet *eth, char *packet)
 		    payload[0] & 0x08) && !(ip->flags_offset & htons(0x1fff))) {
 			/* code 0 = ttl exceeded in transmit */
 			icmp4_error(ip->ip_src, ICMPV4_TIME_EXCEEDED, 0,
-				    (unsigned char *) packet, htons(ip->len));
+				    packet, htons(ip->len));
 		}
 		return 1;
 	} else {

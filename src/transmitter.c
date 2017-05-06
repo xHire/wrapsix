@@ -1,6 +1,6 @@
 /*
  *  WrapSix
- *  Copyright (C) 2008-2012  Michal Zima <xhire@mujmalysvet.cz>
+ *  Copyright (C) 2008-2017  xHire <xhire@wrapsix.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -119,7 +119,7 @@ int transmission_quit(void)
  * @return	0 for success
  * @return	1 for failure
  */
-int transmit_raw(unsigned char *data, unsigned int length)
+int transmit_raw(char *data, unsigned int length)
 {
 	if (sendto(sock, data, length, 0, (struct sockaddr *) &socket_address,
 	    sizeof(struct sockaddr_ll)) != (int) length) {
@@ -142,8 +142,7 @@ int transmit_raw(unsigned char *data, unsigned int length)
  * @return	0 for success
  * @return	1 for failure
  */
-int transmit_ipv4(struct s_ipv4_addr *ip, unsigned char *data,
-		  unsigned int length)
+int transmit_ipv4(struct s_ipv4_addr *ip, char *data, unsigned int length)
 {
 	/* set the destination IPv4 address */
 	memcpy(&socket_address_ipv4.sin_addr.s_addr, ip,

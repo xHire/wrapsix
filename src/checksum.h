@@ -1,6 +1,6 @@
 /*
  *  WrapSix
- *  Copyright (C) 2008-2012  Michal Zima <xhire@mujmalysvet.cz>
+ *  Copyright (C) 2008-2017  xHire <xhire@wrapsix.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,10 +28,10 @@ unsigned short checksum_update(unsigned short old_sum,
 			       unsigned short *new_data, short new_len);
 unsigned short checksum_ipv4(struct s_ipv4_addr ip_src,
 			     struct s_ipv4_addr ip_dest, unsigned short length,
-			     unsigned char proto, unsigned char *payload);
+			     unsigned char proto, char *payload);
 unsigned short checksum_ipv6(struct s_ipv6_addr ip_src,
 			     struct s_ipv6_addr ip_dest, unsigned short length,
-			     unsigned char proto, unsigned char *payload);
+			     unsigned char proto, char *payload);
 unsigned short checksum_ipv4_update(unsigned short old_sum,
 				    struct s_ipv6_addr ip6_src,
 				    struct s_ipv6_addr ip6_dest,

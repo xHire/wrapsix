@@ -1,6 +1,6 @@
 /*
  *  WrapSix
- *  Copyright (C) 2008-2013  Michal Zima <xhire@mujmalysvet.cz>
+ *  Copyright (C) 2008-2017  xHire <xhire@wrapsix.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,8 +23,7 @@
 
 int transmission_init(void);
 int transmission_quit(void);
-int transmit_raw(unsigned char *data, unsigned int length);
-int transmit_ipv4(struct s_ipv4_addr *ip, unsigned char *data,
-		  unsigned int length);
+int transmit_raw(char *data, unsigned int length);
+int transmit_ipv4(struct s_ipv4_addr *ip, char *data, unsigned int length);
 
 #endif /* TRANSMITTER_H */
