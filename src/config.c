@@ -98,7 +98,7 @@ int cfg_parse(const char *config_file, unsigned short *cmtu,
 		/* comments */
 		if (c == '#') {
 			/* skip this line */
-			while (c = getc(f), c != '\n');
+			while (c = getc(f), c != '\n' && !feof(f));
 
 			continue;
 		}
@@ -155,7 +155,7 @@ int cfg_parse(const char *config_file, unsigned short *cmtu,
 
 		/* skip rest of this line */
 		if (c != '\n') {
-			while (c = getc(f), c != '\n');
+			while (c = getc(f), c != '\n' && !feof(f));
 		}
 
 		/* recognize the option */
