@@ -1,6 +1,6 @@
 /*
  *  WrapSix
- *  Copyright (C) 2008-2013  xHire <xhire@wrapsix.org>
+ *  Copyright (C) 2008-2017  xHire <xhire@wrapsix.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -118,13 +118,13 @@ int main(int argc, char **argv)
 		memcpy(&mac, &interface.ifr_hwaddr.sa_data,
 		       sizeof(struct s_mac_addr));
 
-		/* disable generic segmentation offload */
-		ethtool.cmd = ETHTOOL_SGSO;
+		/* disable generic receive offload */
+		ethtool.cmd = ETHTOOL_SGRO;
 		ethtool.data = 0;
 		interface.ifr_data = (caddr_t) &ethtool;
 		if (ioctl(sniff_sock, SIOCETHTOOL, &interface) == -1) {
-			log_error("Unable to disable generic segmentation "
-				  "offload on the interface");
+			log_error("Unable to disable generic receive offload "
+				  "on the interface");
 			return 1;
 		}
 
