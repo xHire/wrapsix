@@ -3,7 +3,8 @@ WrapSix
 
 About
 -----
-WrapSix is a fast NAT64 implementation. You also need a DNS64 server (e.g. BIND).
+WrapSix is a fast NAT64 implementation. You also need a DNS64 server (e.g., BIND
+or unbound).
 
 Installation
 ------------
@@ -26,4 +27,4 @@ Contact
 Author:   xHire
 E-mail:   xhire -at- wrapsix.org
 IRC:      channel #wrapsix on chat.freenode.net
-Homepage: http://www.wrapsix.org/
+Homepage: https://www.wrapsix.org/
