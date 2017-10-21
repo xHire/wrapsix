@@ -1,6 +1,6 @@
 /*
  *  WrapSix
- *  Copyright (C) 2008-2012  xHire <xhire@wrapsix.org>
+ *  Copyright (C) 2008-2017  xHire <xhire@wrapsix.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ struct s_udp {
 
 int udp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 	     unsigned short payload_size);
-int udp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload);
+int udp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
+	     unsigned short payload_size);
 
 #endif /* UDP_H */

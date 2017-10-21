@@ -38,8 +38,7 @@
  * @param	eth4		Ethernet header
  * @param	ip4		IPv4 header
  * @param	payload		UDPv4 data
- * @param	payload_size	Size of payload; needed because IPv4 header has
- * 				dynamic length
+ * @param	payload_size	Size of the data payload
  *
  * @return	0 for success
  * @return	1 for failure
@@ -57,6 +56,13 @@ int udp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 
 	/* parse UDP header */
 	udp = (struct s_udp *) payload;
+
+	/* sanity check again; the second one is not strictly needed */
+	if (payload_size < sizeof(struct s_udp) ||
+	    payload_size != ntohs(udp->len)) {
+		log_debug("Too short/malformed UDPv4 packet");
+		return 1;
+	}
 
 	/* checksum recheck */
 	if (udp->checksum != 0x0000) {
@@ -138,11 +144,13 @@ int udp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
  * @param	eth6		Ethernet header
  * @param	ip6		IPv6 header
  * @param	payload		UDPv6 data
+ * @param	payload_size	Size of the data payload
  *
  * @return	0 for success
  * @return	1 for failure
  */
-int udp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
+int udp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
+	     unsigned short payload_size)
 {
 	struct s_udp	*udp;
 	struct s_nat	*connection;
@@ -154,11 +162,18 @@ int udp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 	/* parse UDP header */
 	udp = (struct s_udp *) payload;
 
+	/* sanity check again; the second one is not strictly needed */
+	if (payload_size < sizeof(struct s_udp) ||
+	    payload_size != ntohs(udp->len)) {
+		log_debug("Too short/malformed UDPv6 packet");
+		return 1;
+	}
+
 	/* checksum recheck */
 	orig_checksum = udp->checksum;
 	udp->checksum = 0;
-	udp->checksum = checksum_ipv6(ip6->ip_src, ip6->ip_dest,
-				      htons(ip6->len), IPPROTO_UDP, payload);
+	udp->checksum = checksum_ipv6(ip6->ip_src, ip6->ip_dest, payload_size,
+				      IPPROTO_UDP, payload);
 
 	if (udp->checksum != orig_checksum) {
 		/* packet is corrupted and shouldn't be processed */
@@ -185,7 +200,7 @@ int udp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 
 	/* translated packet */
 	ip4 = (struct s_ipv4 *) packet;
-	packet_size = sizeof(struct s_ipv4) + htons(ip6->len);
+	packet_size = sizeof(struct s_ipv4) + payload_size;
 
 	/* build IPv4 packet */
 	ip4->ver_hdrlen	  = 0x45;		/* ver 4, header length 20 B */
@@ -210,7 +225,7 @@ int udp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 					     connection->ipv4_port_src);
 
 	/* copy the payload data (with new checksum) */
-	memcpy(packet + sizeof(struct s_ipv4), payload, htons(ip6->len));
+	memcpy(packet + sizeof(struct s_ipv4), payload, payload_size);
 
 	/* compute IPv4 checksum */
 	ip4->checksum = 0x0;

@@ -31,16 +31,16 @@
  *
  * @param	eth	Ethernet header
  * @param	packet	Packet data
+ * @param	length	Packet data length
  *
  * @return	0 for success
  * @return	1 for failure
  */
-int ipv4(struct s_ethernet *eth, char *packet)
+int ipv4(struct s_ethernet *eth, char *packet, unsigned short length)
 {
 	struct s_ipv4	*ip;
 	char		*payload;
 	unsigned short	 header_size;
-	unsigned short	 data_size;
 
 	/* load IP header */
 	ip = (struct s_ipv4 *) packet;
@@ -51,25 +51,34 @@ int ipv4(struct s_ethernet *eth, char *packet)
 	}
 
 	/* compute sizes and get payload */
-	header_size = (ip->ver_hdrlen & 0x0f) * 4;	/* # of 4 byte words */
-	data_size = htons(ip->len) - header_size;
+	header_size = (ip->ver_hdrlen & 0x0f) * 4;	/* # of 4-byte words */
+
+	/* sanity check */
+	if (header_size > length || ntohs(ip->len) != length) {
+		log_debug("IPv4 packet of an inconsistent length [dropped]");
+		return 1;
+	}
+
 	payload = packet + header_size;
 
 	/* check and decrease TTL */
 	if (ip->ttl <= 1) {
 		/* deny this error for ICMP (except ping/pong)
 		 * and for non-first fragments */
-		if ((ip->proto != IPPROTO_ICMP || payload[0] & 0x0 ||
-		    payload[0] & 0x08) && !(ip->flags_offset & htons(0x1fff))) {
-			/* code 0 = ttl exceeded in transmit */
+		if ((ip->proto != IPPROTO_ICMP ||
+		     payload[0] == ICMPV4_ECHO_REPLY ||
+		     payload[0] == ICMPV4_ECHO_REQUEST) &&
+		    !(ip->flags_offset & htons(0x1fff))) {
+			/* code 0 = TTL exceeded in transmit */
 			icmp4_error(ip->ip_src, ICMPV4_TIME_EXCEEDED, 0,
-				    packet, htons(ip->len));
+				    packet, length);
 		}
 		return 1;
 	} else {
 		ip->ttl--;
 	}
 
+	#define data_size	length - header_size
 	switch (ip->proto) {
 		case IPPROTO_TCP:
 			log_debug("IPv4 Protocol: TCP");
@@ -85,4 +94,5 @@ int ipv4(struct s_ethernet *eth, char *packet)
 				  ip->proto, ip->proto);
 			return 1;
 	}
+	#undef data_size
 }

@@ -1,6 +1,6 @@
 /*
  *  WrapSix
- *  Copyright (C) 2008-2013  xHire <xhire@wrapsix.org>
+ *  Copyright (C) 2008-2017  xHire <xhire@wrapsix.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -46,6 +46,6 @@ struct s_arp {
 	struct s_ipv4_addr	ip_dest;	/* 32 b; target protocol addr */
 } __attribute__ ((__packed__));
 
-int arp(struct s_ethernet *ethq, char *payload);
+int arp(struct s_ethernet *ethq, char *payload, unsigned short payload_size);
 
 #endif /* ARP_H */

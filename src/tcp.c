@@ -36,11 +36,13 @@
  * Processing of incoming TCPv4 packets. Directly sends translated TCPv6
  * packets.
  *
+ * The IPv4 packet, although split into several parts, is expected to be stored
+ * in a continuous memory.
+ *
  * @param	eth4		Ethernet header
  * @param	ip4		IPv4 header
  * @param	payload		TCPv4 data
- * @param	payload_size	Size of payload; needed because IPv4 header has
- * 				dynamic length
+ * @param	payload_size	Size of the data payload
  *
  * @return	0 for success
  * @return	1 for failure
@@ -67,8 +69,13 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 	if ((ip4->flags_offset | htons(IPV4_FLAG_DONT_FRAGMENT)) ==
 	    htons(IPV4_FLAG_DONT_FRAGMENT) ||
 	    ((ip4->flags_offset & htons(IPV4_FLAG_MORE_FRAGMENTS)) &&
-	     (ip4->flags_offset & htons(0x1fff)) == 0x0000 &&
-	     payload_size >= sizeof(struct s_tcp))) {
+	     (ip4->flags_offset & htons(0x1fff)) == 0x0000)) {
+		/* sanity check */
+		if (payload_size < sizeof(struct s_tcp)) {
+			log_debug("Too short TCPv4 packet");
+			return 1;
+		}
+
 		/* parse TCP header */
 		tcp = (struct s_tcp *) payload;
 
@@ -84,7 +91,7 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 			if (tcp->checksum != tmp_short) {
 				/* packet is corrupted and shouldn't be
 				 * processed */
-				log_debug("Wrong checksum");
+				log_debug("Wrong TCPv4 checksum");
 				return 1;
 			}
 		}
@@ -94,7 +101,8 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 				    tcp->port_src, tcp->port_dest);
 
 		if (connection == NULL) {
-			log_debug("Incoming connection wasn't found in NAT");
+			log_debug("Incoming TCP connection wasn't found in "
+				  "NAT");
 			return 1;
 		}
 
@@ -170,13 +178,12 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 
 			/* check if there are any saved fragments */
 			if (frag_conn->queue != NULL) {
-				log_debug("Processing TCP fragments of %d",
+				log_debug("Processing TCPv4 fragments of %d",
 					  ip4->id);
 				llnode = frag_conn->queue->first.next;
 				while (llnode->next != NULL) {
 					llnode = llnode->next;
-					memcpy(&tmp_short, llnode->prev->data,
-					       sizeof(unsigned short));
+					/* first is fragment size */
 					tcp_ipv4((struct s_ethernet *) (
 						  (char *) llnode->prev->data +
 						  sizeof(unsigned short)),
@@ -188,7 +195,8 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 						  sizeof(unsigned short) +
 						  sizeof(struct s_ethernet) +
 						  sizeof(struct s_ipv4),
-						 tmp_short);
+						 *((unsigned short *)
+						   llnode->prev->data));
 					free(llnode->prev->data);
 					linkedlist_delete(frag_conn->queue,
 							  llnode->prev);
@@ -289,7 +297,7 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 		}
 
 		if (frag_conn->connection == NULL) {
-			log_debug("Incoming connection wasn't found in "
+			log_debug("Incoming TCPv4 connection wasn't found in "
 				  "fragments table -- saving it");
 
 			if ((saved_packet = (char *) malloc(
@@ -312,10 +320,9 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 			memcpy(saved_packet, &payload_size,
 			       sizeof(unsigned short));
 			memcpy(saved_packet + sizeof(unsigned short),
-			       (char *) eth4, sizeof(struct s_ethernet));
-			memcpy(saved_packet + sizeof(unsigned short) +
-			       sizeof(struct s_ethernet),
-			       (char *) ip4, sizeof(struct s_ipv4));
+			       (char *) eth4, sizeof(struct s_ethernet) +
+			       sizeof(struct s_ipv4));
+			/* just in case the original IPv4 header had options */
 			memcpy(saved_packet + sizeof(unsigned short) +
 			       sizeof(struct s_ethernet) +
 			       sizeof(struct s_ipv4), payload, payload_size);
@@ -349,7 +356,7 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 		/* build IPv6 fragment header */
 		frag->next_header	= IPPROTO_TCP;
 		frag->zeros		= 0x0;
-		frag->id		= htonl(htons(ip4->id));
+		frag->id		= htonl(ntohs(ip4->id));
 
 		/* fragment the fragment or not? */
 		if (payload_size > mtu - sizeof(struct s_ipv6) -
@@ -359,8 +366,8 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 					 sizeof(struct s_ipv6_fragment));
 
 			/* fill in missing IPv6 fragment header fields */
-			frag->offset_flag = htons((htons(ip4->flags_offset) <<
-						  3) |
+			frag->offset_flag = htons((ntohs(ip4->flags_offset) <<
+						   3) |
 						  IPV6_FLAG_MORE_FRAGMENTS);
 
 			/* copy the payload data */
@@ -374,9 +381,9 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 			ip6->len = htons(payload_size +
 					 sizeof(struct s_ipv6_fragment) -
 					 FRAGMENT_LEN);
-			frag->offset_flag = htons(((htons(ip4->flags_offset) &
-						  0x1fff) +
-						  FRAGMENT_LEN / 8) << 3);
+			frag->offset_flag = htons(((ntohs(ip4->flags_offset) &
+						    0x1fff) +
+						   FRAGMENT_LEN / 8) << 3);
 			if (ip4->flags_offset &
 			    htons(IPV4_FLAG_MORE_FRAGMENTS)) {
 				frag->offset_flag |=
@@ -399,7 +406,7 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
 					 sizeof(struct s_ipv6_fragment));
 
 			/* fill in missing IPv6 fragment header fields */
-			frag->offset_flag = htons(htons(ip4->flags_offset) <<
+			frag->offset_flag = htons(ntohs(ip4->flags_offset) <<
 						  3);
 			if (ip4->flags_offset &
 			    htons(IPV4_FLAG_MORE_FRAGMENTS)) {
@@ -430,17 +437,25 @@ int tcp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
  * @param	eth6		Ethernet header
  * @param	ip6		IPv6 header
  * @param	payload		TCPv6 data
+ * @param	payload_size	Size of the data payload (L4+)
  *
  * @return	0 for success
  * @return	1 for failure
  */
-int tcp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
+int tcp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
+	     unsigned short payload_size)
 {
 	struct s_tcp	*tcp;
 	struct s_nat	*connection;
 	unsigned short	 orig_checksum;
 	struct s_ipv4	*ip4;
 	char		 packet[PACKET_BUFFER];
+
+	/* sanity check */
+	if (payload_size < sizeof(struct s_tcp)) {
+		log_debug("Too short TCPv6 packet");
+		return 1;
+	}
 
 	/* parse TCP header */
 	tcp = (struct s_tcp *) payload;
@@ -449,7 +464,7 @@ int tcp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 	orig_checksum = tcp->checksum;
 	tcp->checksum = 0;
 	tcp->checksum = checksum_ipv6(ip6->ip_src, ip6->ip_dest,
-				      htons(ip6->len), IPPROTO_TCP,
+				      payload_size, IPPROTO_TCP,
 				      (char *) payload);
 
 	if (tcp->checksum != orig_checksum) {
@@ -540,7 +555,7 @@ int tcp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 	ip4->ver_hdrlen	  = 0x45;		/* ver 4, header length 20 B */
 	ip4->tos	  = ((ip6->ver & 0x0f) << 4) |
 			    ((ip6->traffic_class & 0xf0) >> 4);
-	ip4->len	  = htons(sizeof(struct s_ipv4) + htons(ip6->len));
+	ip4->len	  = htons(sizeof(struct s_ipv4) + payload_size);
 	ip4->id		  = 0x0;
 	ip4->flags_offset = htons(IPV4_FLAG_DONT_FRAGMENT);
 	ip4->ttl	  = ip6->hop_limit;
@@ -559,14 +574,15 @@ int tcp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 					     connection->ipv4_port_src);
 
 	/* copy the payload data (with new checksum) */
-	memcpy(packet + sizeof(struct s_ipv4), payload, htons(ip6->len));
+	memcpy(packet + sizeof(struct s_ipv4), payload, payload_size);
 
 	/* compute IPv4 checksum */
 	ip4->checksum = 0x0;
 	ip4->checksum = checksum(ip4, sizeof(struct s_ipv4));
 
 	/* send translated packet */
-	transmit_ipv4(&ip4->ip_dest, packet, htons(ip4->len));
+	transmit_ipv4(&ip4->ip_dest, packet, sizeof(struct s_ipv4) +
+		      payload_size);
 
 	return 0;
 }

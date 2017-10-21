@@ -1,6 +1,6 @@
 /*
  *  WrapSix
- *  Copyright (C) 2008-2013  xHire <xhire@wrapsix.org>
+ *  Copyright (C) 2008-2017  xHire <xhire@wrapsix.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -64,6 +64,6 @@ struct s_ipv4_pseudo_delta {
 							 address */
 } __attribute__ ((__packed__));
 
-int ipv4(struct s_ethernet *eth, char *packet);
+int ipv4(struct s_ethernet *eth, char *packet, unsigned short length);
 
 #endif /* IPV4_H */

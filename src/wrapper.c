@@ -24,9 +24,11 @@
 #include <net/if.h>		/* struct ifreq */
 #include <netinet/in.h>		/* htons */
 #include <netpacket/packet.h>	/* struct packet_mreq, struct sockaddr_ll */
+#include <stdio.h>		/* perror */
 #include <stdlib.h>		/* srand */
 #include <string.h>		/* strncpy */
 #include <sys/ioctl.h>		/* ioctl, SIOCGIFINDEX */
+#include <sys/types.h>		/* caddr_t */
 #include <time.h>		/* time, time_t */
 #include <unistd.h>		/* close */
 
@@ -36,6 +38,7 @@
 #endif /* HAVE_CONFIG_H */
 #include "config.h"
 #include "ethernet.h"
+#include "icmp.h"
 #include "ipv4.h"
 #include "ipv6.h"
 #include "log.h"
@@ -53,7 +56,7 @@ struct s_ipv4_addr	wrapsix_ipv4_addr;
 struct s_ipv6_addr	host_ipv6_addr;
 struct s_ipv4_addr	host_ipv4_addr;
 
-int process(char *packet);
+static int process(char *packet, unsigned short length);
 
 int main(int argc, char **argv)
 {
@@ -177,13 +180,21 @@ int main(int argc, char **argv)
 
 	/* sniff! :c) */
 	for (i = 1;; i++) {
-		if ((length = recv(sniff_sock, buffer, PACKET_BUFFER, 0)) ==
-		    -1) {
+		length = recv(sniff_sock, buffer, PACKET_BUFFER, MSG_TRUNC);
+		if (length == -1) {
+			perror("recv");
 			log_error("Unable to retrieve data from socket");
 			return 1;
 		}
 
-		process((char *) &buffer);
+		if (length > PACKET_BUFFER) {
+			log_error("Received packet is too big (%d B). Please "
+				  "tune NIC offloading features and report "
+				  "this issue to " PACKAGE_BUGREPORT, length);
+			continue;
+		}
+
+		process(buffer, length);
 
 		if (i % 250000) {
 			curtime = time(NULL);
@@ -217,29 +228,46 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-int process(char *packet)
+/**
+ * Decide what to do with a packet and pass it for further processing.
+ *
+ * @param	packet	Packet data
+ * @param	length	Packet data length
+ *
+ * @return	0 for success
+ * @return	1 for failure
+ */
+static int process(char *packet, unsigned short length)
 {
-	struct s_ethernet	*eth;		/* the ethernet header */
-	char			*payload;	/* the IP header + packet
-						   payload */
+	struct s_ethernet *eth;
+
+	/* sanity check: out of every combination this is the smallest one */
+	if (length < sizeof(struct s_ethernet) + sizeof(struct s_ipv4) +
+	    sizeof(struct s_icmp)) {
+		return 1;
+	}
 
 	/* parse ethernet header */
-	eth     = (struct s_ethernet *) (packet);
-	payload = packet + sizeof(struct s_ethernet);
+	eth = (struct s_ethernet *) packet;
+
+	#define payload		packet + sizeof(struct s_ethernet)
+	#define payload_length	length - sizeof(struct s_ethernet)
 
 	switch (htons(eth->type)) {
 		case ETHERTYPE_IP:
-			return ipv4(eth, payload);
+			return ipv4(eth, payload, payload_length);
 		case ETHERTYPE_IPV6:
-			return ipv6(eth, payload);
+			return ipv6(eth, payload, payload_length);
 		case ETHERTYPE_ARP:
-			log_debug("HW Protocol: ARP");
-			return arp(eth, payload);
+			return arp(eth, payload, payload_length);
 		default:
 			log_debug("HW Protocol: unknown [%d/0x%04x]",
 			       htons(eth->type), htons(eth->type));
 			return 1;
 	}
+
+	#undef payload_length
+	#undef payload
 }
 
 /**

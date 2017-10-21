@@ -25,18 +25,19 @@
 #include "transmitter.h"
 #include "wrapper.h"
 
-#define ARP_PACKET_SIZE sizeof(struct s_ethernet) + sizeof(struct s_arp)
+#define ARP_PACKET_SIZE	sizeof(struct s_ethernet) + sizeof(struct s_arp)
 
 /**
  * Process ARP packets and reply to them.
  *
- * @param	ethq	Ethernet header of the packet
- * @param	payload	Data of the packet
+ * @param	ethq		Ethernet header of the packet
+ * @param	payload		Data of the packet
+ * @param	payload_size	Size of the data payload
  *
  * @return	0 for success
  * @return	1 for failure
  */
-int arp(struct s_ethernet *ethq, char *payload)
+int arp(struct s_ethernet *ethq, char *payload, unsigned short payload_size)
 {
 	struct s_arp *arpq, *arpr;	/* request and reply */
 	struct s_ethernet *ethr;
@@ -47,6 +48,12 @@ int arp(struct s_ethernet *ethq, char *payload)
 	/* process only requests */
 	if (htons(arpq->opcode) != ARP_OP_REQUEST) {
 		/* not an ARP request */
+		return 1;
+	}
+
+	/* sanity check (it's OK to do it here) */
+	if (payload_size < sizeof(struct s_arp)) {
+		log_debug("Too short ARP packet");
 		return 1;
 	}
 

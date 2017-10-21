@@ -31,11 +31,12 @@
  *
  * @param	eth	Ethernet header
  * @param	packet	Packet data
+ * @param	length	Packet data length
  *
  * @return	0 for success
  * @return	1 for failure
  */
-int ipv6(struct s_ethernet *eth, char *packet)
+int ipv6(struct s_ethernet *eth, char *packet, unsigned short length)
 {
 	struct s_ipv6	*ip;
 	char		*payload;
@@ -43,6 +44,12 @@ int ipv6(struct s_ethernet *eth, char *packet)
 	/* load data into structures */
 	ip = (struct s_ipv6 *) packet;
 	payload = packet + sizeof(struct s_ipv6);
+
+	/* sanity check; len is already covered */
+	if (ntohs(ip->len) + sizeof(struct s_ipv6) != length) {
+		log_debug("IPv6 packet of an inconsistent length [dropped]");
+		return 1;
+	}
 
 	/* test if this packet belongs to us */
 	if (memcmp(&wrapsix_ipv6_prefix, &ip->ip_dest, 12) != 0 &&
@@ -64,19 +71,21 @@ int ipv6(struct s_ethernet *eth, char *packet)
 		ip->hop_limit--;
 	}
 
+	#define data_size	length - sizeof(struct s_ipv6)
 	switch (ip->next_header) {
 		case IPPROTO_TCP:
 			log_debug("IPv6 Protocol: TCP");
-			return tcp_ipv6(eth, ip, payload);
+			return tcp_ipv6(eth, ip, payload, data_size);
 		case IPPROTO_UDP:
 			log_debug("IPv6 Protocol: UDP");
-			return udp_ipv6(eth, ip, payload);
+			return udp_ipv6(eth, ip, payload, data_size);
 		case IPPROTO_ICMPV6:
 			log_debug("IPv6 Protocol: ICMP");
-			return icmp_ipv6(eth, ip, payload);
+			return icmp_ipv6(eth, ip, payload, data_size);
 		default:
 			log_debug("IPv6 Protocol: unknown [%d/0x%x]",
 				  ip->next_header, ip->next_header);
 			return 1;
 	}
+	#undef data_size
 }

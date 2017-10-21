@@ -47,14 +47,13 @@ int sub_icmp6_error(struct s_ethernet *eth6,
  * @param	eth4		Ethernet header
  * @param	ip4		IPv4 header
  * @param	payload		ICMPv4 data
- * @param	payload_size	Size of payload; needed because IPv4 header has
- * 				dynamic length
+ * @param	payload_size	Size of the data payload
  *
  * @return	0 for success
  * @return	1 for failure
  */
-int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4,
-	      char *payload, unsigned short payload_size)
+int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
+	      unsigned short payload_size)
 {
 	struct s_icmp	*icmp;
 	unsigned int	*icmp_extra;
@@ -86,7 +85,7 @@ int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4,
 
 	/* ICMP checksum recheck */
 	orig_checksum = icmp->checksum;
-	icmp->checksum = 0;
+	icmp->checksum = 0x0;
 	icmp->checksum = checksum((char *) icmp, payload_size);
 
 	if (icmp->checksum != orig_checksum) {
@@ -114,7 +113,7 @@ int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4,
 
 			echo->id = connection->ipv6_port_src;
 
-			/* override information in original ICMP header */
+			/* override information in the original ICMP header */
 			icmp->type = ICMPV6_ECHO_REPLY;
 
 			/* copy the payload data */
@@ -164,18 +163,25 @@ int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4,
 				} else if (icmp->code == 4) {
 					icmp->type = ICMPV6_PKT_TOO_BIG;
 					icmp->code = 0;
+					/* here to write new 4B MTU value */
 					icmp_extra = (unsigned int *)
 						((char *) icmp +
 						 sizeof(struct s_icmp));
+					/* from here read original 2B MTU value
+					 * after skipping 2 unused bytes */
 					icmp_extra_s = (unsigned short *)
 						((char *) icmp +
 						 sizeof(struct s_icmp) + 2);
-					if (ntohs(*icmp_extra_s) < 68) {
+					/* router supports path MTU discovery */
+					if (ntohs(*icmp_extra_s) >= 68) {
 						*icmp_extra = htonl(
-							*icmp_extra_s + 20 <
-							mtu ? (unsigned int)
-							*icmp_extra_s + 20 :
+							ntohs(*icmp_extra_s) +
+							20 < mtu ?
+							(unsigned int)
+							(ntohs(*icmp_extra_s) +
+							20) :
 							(unsigned int) mtu);
+					/* does not => leverage packet length */
 					} else {
 						/* RFC1191 */
 						/* NOTE: >= would cause infinite
@@ -186,17 +192,19 @@ int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4,
 						if (ntohs(eip4->len) >
 						    1006) {
 							*icmp_extra =
-								htonl(1006);
+								htonl(1006 +
+								      20);
 						} else if (ntohs(eip4->len) >
 						    508) {
 							*icmp_extra =
-								htonl(508);
+								htonl(508 + 20);
 						} else if (ntohs(eip4->len) >
 						    296) {
 							*icmp_extra =
-								htonl(296);
+								htonl(296 + 20);
 						} else {
-							*icmp_extra = htonl(68);
+							*icmp_extra =
+								htonl(68 + 20);
 						}
 					}
 				} else if (icmp->code == 3) {
@@ -391,6 +399,8 @@ int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 	/* decide the type of the ICMP packet */
 	switch (icmp->type) {
 		case ICMPV6_ECHO_REQUEST:
+			/* this option is already sanitized */
+
 			echo = (struct s_icmp_echo *) icmp_data;
 
 			connection = nat_out(nat6_icmp, nat4_icmp, eth6->src,
@@ -437,7 +447,7 @@ int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 			/* sanity check */
 			if (payload_size < sizeof(struct s_icmp) +
 			    sizeof(struct s_icmp_ndp_ns)) {
-				log_debug("Too short NDP NS");
+				log_debug("Too short packet for NDP NS");
 				return 1;
 			}
 
@@ -561,7 +571,8 @@ int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 			/* sanity check */
 			if (payload_size < sizeof(struct s_icmp) + 4 +
 			    sizeof(struct s_ipv6)) {
-				log_debug("Too short ICMPv6 packet 6");
+				log_debug("Too short ICMPv6 packet"
+					  "PacketTooBig");
 				return 1;
 			}
 
@@ -897,13 +908,13 @@ int sub_icmp4_error(char *payload, unsigned short payload_size,
 		return 1;
 	}
 	payload_size -= eip4_hlen;
-
 	payload += eip4_hlen;
 
 	/* define new inner IPv6 header */
 	/* new_len+4+4+40=102 < 1280 */
 	eip6 = (struct s_ipv6 *) (packet + *packet_len + sizeof(struct s_icmp) +
 				  4);
+
 	/* we'll need this right now */
 	ipv4_to_ipv6(&eip4->ip_dest, &eip6->ip_dest);
 
@@ -955,7 +966,8 @@ int sub_icmp4_error(char *payload, unsigned short payload_size,
 			/* else: */
 
 			/* sanity check */
-			if (payload_size < 8) {
+			if (payload_size < sizeof(struct s_icmp) +
+					   sizeof(struct s_icmp_echo)) {
 				log_debug("Too short ICMPv4 packet 4");
 				return 1;
 			}
@@ -986,7 +998,7 @@ int sub_icmp4_error(char *payload, unsigned short payload_size,
 	}
 
 	/* copy ICMP header to new packet */
-	memcpy(packet + *packet_len, *icmp, sizeof(struct s_icmp) + 4);
+	memcpy(packet + *packet_len, (char *) *icmp, sizeof(struct s_icmp) + 4);
 	*icmp = (struct s_icmp *) (packet + *packet_len);
 
 	/* complete inner IPv6 header */
@@ -1074,7 +1086,7 @@ int sub_icmp6_error(struct s_ethernet *eth6,
 
 	unsigned char skip_l4 = 0;
 
-	/* sanity check */
+	/* sanity check; redundant only for rare 'Packet too big' */
 	if (payload_size < sizeof(struct s_ipv6)) {
 		log_debug("Too short ICMPv6 packet 2");
 		return 1;
@@ -1103,6 +1115,7 @@ int sub_icmp6_error(struct s_ethernet *eth6,
 
 		eip4->id = htons(ntohl(eip6_frag->id));
 		if (ntohs(eip6_frag->offset_flag) & 0xfff8) {
+			/* this is not the first fragment */
 			skip_l4 = 1;
 		}
 		if (ntohs(eip6_frag->offset_flag) & IPV6_FLAG_MORE_FRAGMENTS) {
@@ -1118,6 +1131,12 @@ int sub_icmp6_error(struct s_ethernet *eth6,
 		payload += sizeof(struct s_ipv6_fragment);
 		payload_size -= sizeof(struct s_ipv6_fragment);
 	} else {
+		eip4->id	   = 0x0;
+		eip4->flags_offset = htons(IPV4_FLAG_DONT_FRAGMENT);
+	}
+
+	/* look for the original connection */
+	if (skip_l4 == 0) {
 		/* sanity check */
 		/* 4 B -> L4 addrs */
 		if (payload_size < 4) {
@@ -1125,12 +1144,6 @@ int sub_icmp6_error(struct s_ethernet *eth6,
 			return 1;
 		}
 
-		eip4->id	   = 0x0;
-		eip4->flags_offset = htons(IPV4_FLAG_DONT_FRAGMENT);
-	}
-
-	/* look for the original connection */
-	if (skip_l4 == 0) {
 		switch (eip6->next_header) {
 			case IPPROTO_TCP:
 				etcp = (struct s_tcp *) payload;
@@ -1216,7 +1229,7 @@ int sub_icmp6_error(struct s_ethernet *eth6,
 		}
 	}
 
-	/* copy ICMP header to new packet */
+	/* copy ICMP header (with updated data) to new packet */
 	memcpy(packet + *packet_len, *icmp, sizeof(struct s_icmp) + 4);
 	*icmp = (struct s_icmp *) (packet + *packet_len);
 
