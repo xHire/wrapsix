@@ -351,11 +351,13 @@ int icmp_ipv4(struct s_ethernet *eth4, struct s_ipv4 *ip4, char *payload,
  * @param	eth6		Ethernet header
  * @param	ip6		IPv6 header
  * @param	payload		ICMPv6 data
+ * @param	payload_size	Size of the data payload
  *
  * @return	0 for success
  * @return	1 for failure
  */
-int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
+int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
+	      unsigned short payload_size)
 {
 	struct s_icmp 	*icmp;
 	unsigned int	*icmp_extra;
@@ -364,15 +366,12 @@ int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload)
 	char	 	*icmp_data;
 	struct s_nat  	*connection;
 	unsigned short	 orig_checksum;
-	unsigned short	 payload_size;
 	char		 packet[PACKET_BUFFER - sizeof(struct s_ethernet)];
 	unsigned short	 new_len = sizeof(struct s_ipv4);
 
 	struct s_icmp_echo *echo;
 	struct s_ipv4 *ip4;
 	struct s_ipv6 *eip6;
-
-	payload_size = ntohs(ip6->len);
 
 	/* sanity check */
 	if (payload_size < sizeof(struct s_icmp) + 4) {

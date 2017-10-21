@@ -79,7 +79,8 @@ struct s_icmp_ndp_na {
 
 int icmp_ipv4(struct s_ethernet *eth, struct s_ipv4 *ip4, char *payload,
 	      unsigned short payload_size);
-int icmp_ipv6(struct s_ethernet *eth, struct s_ipv6 *ip6, char *payload);
+int icmp_ipv6(struct s_ethernet *eth6, struct s_ipv6 *ip6, char *payload,
+	      unsigned short payload_size);
 int icmp_ndp(struct s_ethernet *ethq, struct s_ipv6 *ipq,
 	     struct s_icmp_ndp_ns *ndp_ns);
 
