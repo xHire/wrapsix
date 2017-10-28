@@ -14,7 +14,6 @@ src/Makefile.in
 Makefile
 src/Makefile
 INSTALL
-src/autoconfig.h.in.in
 src/autoconfig.h.in
 src/autoconfig.h
 src/stamp-h1

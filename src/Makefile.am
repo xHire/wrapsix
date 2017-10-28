@@ -16,6 +16,3 @@ wrapsix_SOURCES = \
 		  transmitter.c transmitter.h \
 		  udp.c udp.h \
 		  wrapper.c wrapper.h
-
-autoconfig.h:
-	sed -e 's|--sysconfdir--|$(sysconfdir)|' autoconfig.h.in > autoconfig.h
