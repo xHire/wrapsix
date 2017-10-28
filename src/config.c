@@ -290,8 +290,9 @@ int cfg_host_ips(char *cinterface, struct s_ipv6_addr *ipv6_addr,
 
 	/* IPv6 default? huh... but we can't work without host IPv6 address */
 	if (!(found & 0x05)) {
+		/* the IPv4 in there is from class E, just to be sure */
 		/* FUN: try to decode it ;c) */
-		inet_pton(AF_INET6, "64:ff9b::E7ad:514", ipv6_addr);
+		inet_pton(AF_INET6, "64:ff9b::F7ad:514", ipv6_addr);
 	}
 
 	freeifaddrs(ifaddr);
