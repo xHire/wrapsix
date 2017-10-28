@@ -18,9 +18,24 @@ custom configuration file in runtime -- just pass its path as an argument:
 
 # wrapsix ./wrapsix.conf
 
+Pay attention to the IPv4 address. If you assign IP address that is already
+controlled by your OS, TCP won't work (OS will terminate all connection
+attempts).
+
+Also, IPv4 is a little bit tricky. To ease both configuration and implementation
+as much as possible, WrapSix leverages configuration for IPv4 already present in
+the operating system. Therefore to work, IPv4 needs to be functional on the OS
+level.
+
 Running
 -------
 It can be run by `wrapsix` command as root.
+
+Please note that traffic originating from the host WrapSix runs on cannot be
+translated since WrapSix listens for incoming packets on the interface itself.
+Therefore, you need some other host for testing it. If WrapSix doesn't seem to
+be working, ensure (e.g., with tcpdump) that you have correctly configured
+routing in your network.
 
 Contact
 -------
