@@ -1,21 +1,21 @@
 # autotools
 aclocal.m4
 autom4te.cache/
-configure
-depcomp
-install-sh
-missing
 config.cache
 config.log
 config.status
-src/.deps/
-Makefile.in
-src/Makefile.in
-Makefile
-src/Makefile
+configure
+depcomp
 INSTALL
-src/autoconfig.h.in
+install-sh
+Makefile
+Makefile.in
+missing
+src/.deps/
 src/autoconfig.h
+src/autoconfig.h.in
+src/Makefile
+src/Makefile.in
 src/stamp-h1
 
 # build
