@@ -16,6 +16,8 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define _POSIX_C_SOURCE 201112L
+
 #include <arpa/inet.h>	/* inet_pton */
 #include <ifaddrs.h>	/* struct ifaddrs, getifaddrs, freeifaddrs */
 #include <netdb.h>	/* getnameinfo, NI_NUMERICHOST */

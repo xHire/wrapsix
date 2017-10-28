@@ -16,6 +16,8 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define _DEFAULT_SOURCE
+
 #include <arpa/inet.h>		/* inet_pton */
 #include <linux/ethtool.h>	/* struct ethtool_value */
 #include <linux/if_ether.h>	/* ETH_P_ALL */

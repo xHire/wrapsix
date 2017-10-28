@@ -16,6 +16,8 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define _DEFAULT_SOURCE
+
 #include <net/if.h>		/* struct ifreq */
 #include <netinet/if_ether.h>	/* {P,A}F_PACKET, ETH_P_*, socket, SOCK_RAW,
 				 * setsockopt, SOL_SOCKET, SO_BINDTODEVICE,

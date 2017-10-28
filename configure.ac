@@ -26,10 +26,10 @@ AC_ARG_ENABLE([debug],
 	      [debug=no])
 
 if test "x$debug" = "xyes"; then
-	AS_COMPILER_FLAGS(AM_CFLAGS, "-g -ggdb -O0 -pipe -pedantic -Wall -Wextra -Waggregate-return -Wcast-align -Wdeclaration-after-statement -Wformat-nonliteral -Wformat-security -Winit-self -Winline -Winvalid-pch -Wmissing-declarations -Wmissing-include-dirs -Wmissing-noreturn -Wmissing-prototypes -Wnested-externs -Wno-missing-field-initializers -Wno-unused-parameter -Wold-style-definition -Wpointer-arith -Wredundant-decls -Wshadow -Wstrict-prototypes -Wswitch-enum -Wundef -Wunsafe-loop-optimizations -Wwrite-strings")
+	AS_COMPILER_FLAGS(AM_CFLAGS, "-std=c89 -g -ggdb -O0 -pipe -pedantic -Wall -Wextra -Waggregate-return -Wcast-align -Wdeclaration-after-statement -Wformat-nonliteral -Wformat-security -Winit-self -Winline -Winvalid-pch -Wmissing-declarations -Wmissing-include-dirs -Wmissing-noreturn -Wmissing-prototypes -Wnested-externs -Wno-missing-field-initializers -Wno-unused-parameter -Wold-style-definition -Wpointer-arith -Wredundant-decls -Wshadow -Wstrict-prototypes -Wswitch-enum -Wundef -Wunsafe-loop-optimizations -Wwrite-strings")
 	AC_DEFINE([DEBUG], [], [Turn on debug mode])
 else
-        AS_COMPILER_FLAGS(AM_CFLAGS, "-O2")
+        AS_COMPILER_FLAGS(AM_CFLAGS, "-O2 -pipe")
 fi
 
 
