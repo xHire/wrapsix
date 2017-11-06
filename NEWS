@@ -1,6 +1,11 @@
 WrapSix 0.2.1
 =============
 - custom configuration files and some autodetection
+- moved much of the work from heap to stack
+- fixed setting up the NIC offloading
+- audited existing codebase
+- oficially using C89
+- removed DNS64 proxy for good
 
 WrapSix 0.2.0
 =============
