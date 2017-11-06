@@ -1,7 +1,7 @@
 # This file uses AC_CONFIG_MACRO_DIR, so we need Autoconf 2.58 or better.
 AC_PREREQ([2.58])
 
-AC_INIT([WrapSix], [0.2.0], [xhire@wrapsix.org], [wrapsix], [https://www.wrapsix.org/])
+AC_INIT([WrapSix], [0.2.1.99], [xhire@wrapsix.org], [wrapsix], [https://www.wrapsix.org/])
 AM_INIT_AUTOMAKE([-Wall -Werror])
 
 # prevent automatic adding of "-g -O2" to CFLAGS
