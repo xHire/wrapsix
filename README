@@ -33,9 +33,14 @@ It can be run by `wrapsix` command as root.
 
 Please note that traffic originating from the host WrapSix runs on cannot be
 translated since WrapSix listens for incoming packets on the interface itself.
-Therefore, you need some other host for testing it. If WrapSix doesn't seem to
-be working, ensure (e.g., with tcpdump) that you have correctly configured
-routing in your network.
+Therefore, you need some other host for testing it. The easiest way to route
+traffic to the host running wrapsix is to setup static route. Assuming the
+wrapsix host is assinged '2001:470:eb27::dd' and you're using the default
+prefix '64:ff9b::/96', you can add a route on the client host like this:
+'ip -f inet6 route add 64:ff9b::/96 via 2001:470:eb27::11'
+
+If WrapSix doesn't seem to be working, ensure (e.g., with tcpdump) that you
+have correctly configured routing in your network.
 
 Contact
 -------
