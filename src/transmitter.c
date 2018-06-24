@@ -1,6 +1,6 @@
 /*
  *  WrapSix
- *  Copyright (C) 2008-2017  xHire <xhire@wrapsix.org>
+ *  Copyright (C) 2008-2018  xHire <xhire@wrapsix.org>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -57,16 +57,16 @@ int transmission_init(void)
 
 	/* initialize RAW socket */
 	if ((sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
+		perror("socket");
 		log_error("Couldn't open RAW socket.");
-		perror("socket()");
 		return 1;
 	}
 
 	/* bind the socket to the interface */
 	if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, &interface,
 	    sizeof(struct ifreq)) == -1) {
+		perror("setsockopt");
 		log_error("Couldn't bind the socket to the interface.");
-		perror("setsockopt()");
 		return 1;
 	}
 
@@ -78,16 +78,16 @@ int transmission_init(void)
 
 	/* initialize RAW IPv4 socket */
 	if ((sock_ipv4 = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) == -1) {
+		perror("socket");
 		log_error("Couldn't open RAW IPv4 socket.");
-		perror("socket()");
 		return 1;
 	}
 
 	/* we will provide our own IPv4 header */
 	if (setsockopt(sock_ipv4, IPPROTO_IP, IP_HDRINCL, &on,
 	    sizeof(on)) == -1) {
+		perror("setsockopt");
 		log_error("Couldn't apply the socket settings.");
-		perror("setsockopt()");
 		return 1;
 	}
 
@@ -104,8 +104,8 @@ int transmission_quit(void)
 {
 	/* close the socket */
 	if (close(sock) || close(sock_ipv4)) {
+		perror("close");
 		log_warn("Couldn't close the transmission sockets.");
-		perror("close()");
 		return 1;
 	} else {
 		return 0;
@@ -125,8 +125,8 @@ int transmit_raw(char *data, unsigned int length)
 {
 	if (sendto(sock, data, length, 0, (struct sockaddr *) &socket_address,
 	    sizeof(struct sockaddr_ll)) != (int) length) {
+		perror("sendto");
 		log_error("Couldn't send a RAW packet.");
-		perror("sendto()");
 		return 1;
 	}
 
@@ -153,8 +153,8 @@ int transmit_ipv4(struct s_ipv4_addr *ip, char *data, unsigned int length)
 	if (sendto(sock_ipv4, data, length, 0,
 	    (struct sockaddr *) &socket_address_ipv4,
 	    sizeof(struct sockaddr)) != (int) length) {
+		perror("sendto");
 		log_error("Couldn't send an IPv4 packet.");
-		perror("sendto()");
 		return 1;
 	}
 
