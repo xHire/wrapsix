@@ -158,6 +158,16 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	/* bind the socket to the interface (isn't necessary in general, but
+	 * lowpan doesn’t work without it) */
+	if (setsockopt(sniff_sock, SOL_SOCKET, SO_BINDTODEVICE, &interface,
+	    sizeof(struct ifreq)) == -1) {
+		perror("setsockopt");
+		log_error("Couldn't bind the sniffing socket to the "
+			  "interface.");
+		return 1;
+	}
+
 	/* set the promiscuous mode */
 	memset(&pmr, 0x0, sizeof(pmr));
 	pmr.mr_ifindex = interface.ifr_ifindex;
