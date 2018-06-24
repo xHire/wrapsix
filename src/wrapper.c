@@ -19,7 +19,7 @@
 #define _DEFAULT_SOURCE
 
 #include <arpa/inet.h>		/* inet_pton */
-#include <linux/ethtool.h>	/* struct ethtool_value */
+#include <linux/ethtool.h>	/* struct ethtool_value, ETHTOOL_S* */
 #include <linux/if_ether.h>	/* ETH_P_ALL */
 #include <linux/sockios.h>	/* SIOCETHTOOL */
 #include <net/ethernet.h>	/* ETHERTYPE_* */
@@ -131,9 +131,18 @@ int main(int argc, char **argv)
 		interface.ifr_data = (caddr_t) &ethtool;
 		if (ioctl(sniff_sock, SIOCETHTOOL, &interface) == -1) {
 			perror("ioctl");
-			log_error("Unable to disable generic receive offload "
-				  "on the interface");
-			return 1;
+			log_warn("Unable to disable generic receive offload "
+				 "on the interface");
+		}
+
+		/* disable tcp segmentation offload */
+		ethtool.cmd = ETHTOOL_STSO;
+		ethtool.data = 0;
+		interface.ifr_data = (caddr_t) &ethtool;
+		if (ioctl(sniff_sock, SIOCETHTOOL, &interface) == -1) {
+			perror("ioctl");
+			log_warn("Unable to disable tcp segmentation offload "
+				 "on the interface");
 		}
 
 		/* reinitialize the interface */
