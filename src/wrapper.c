@@ -107,6 +107,7 @@ int main(int argc, char **argv)
 	/* initialize the socket for sniffing */
 	if ((sniff_sock = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) ==
 	    -1) {
+		perror("socket");
 		log_error("Unable to create listening socket");
 		return 1;
 	}
@@ -114,6 +115,7 @@ int main(int argc, char **argv)
 	/* get the interface */
 	strncpy(interface.ifr_name, cfg.interface, IFNAMSIZ);
 	if (ioctl(sniff_sock, SIOCGIFINDEX, &interface) == -1) {
+		perror("ioctl");
 		log_error("Unable to get the interface %s", cfg.interface);
 		return 1;
 	}
@@ -128,6 +130,7 @@ int main(int argc, char **argv)
 		ethtool.data = 0;
 		interface.ifr_data = (caddr_t) &ethtool;
 		if (ioctl(sniff_sock, SIOCETHTOOL, &interface) == -1) {
+			perror("ioctl");
 			log_error("Unable to disable generic receive offload "
 				  "on the interface");
 			return 1;
@@ -136,10 +139,12 @@ int main(int argc, char **argv)
 		/* reinitialize the interface */
 		interface.ifr_data = NULL;
 		if (ioctl(sniff_sock, SIOCGIFINDEX, &interface) == -1) {
+			perror("ioctl");
 			log_error("Unable to reinitialize the interface");
 			return 1;
 		}
 	} else {
+		perror("ioctl");
 		log_error("Unable to get the interface's HW address");
 		return 1;
 	}
@@ -150,6 +155,7 @@ int main(int argc, char **argv)
 	pmr.mr_type = PACKET_MR_PROMISC;
 	if (setsockopt(sniff_sock, SOL_PACKET, PACKET_ADD_MEMBERSHIP,
 	    (char *) &pmr, sizeof(pmr)) == -1) {
+		perror("setsockopt");
 		log_error("Unable to set the promiscuous mode on the "
 			  "interface");
 		return 1;
@@ -219,6 +225,7 @@ int main(int argc, char **argv)
 	/* unset the promiscuous mode */
 	if (setsockopt(sniff_sock, SOL_PACKET, PACKET_DROP_MEMBERSHIP,
 	    (char *) &pmr, sizeof(pmr)) == -1) {
+		perror("setsockopt");
 		log_error("Unable to unset the promiscuous mode on the "
 			  "interface");
 		/* do not call return here as we want to close the socket too */
